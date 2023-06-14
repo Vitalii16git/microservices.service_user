@@ -1,26 +1,27 @@
-import express, { Request, Response, Application, NextFunction } from "express";
+import dotenv from "dotenv";
+dotenv.config();
+import express, { Application } from "express";
 import cors from "cors";
-import bodyParser from "body-parser";
-import {
-  createUser,
-  loginUser,
-  authorizeUser,
-} from "../controllers/user.controller.ts";
+import nodemailer from "nodemailer";
+import logger from "./utils/logger.ts";
+import router from "./routes/user.route.ts";
 
 const app: Application = express();
 const PORT = process.env.PORT || 5050;
 
+app.use(express.json());
 app.use(cors());
-app.use(bodyParser.json());
+app.use("/user", router);
 
-app.post("/users/register", createUser);
-app.post("/users/login", loginUser);
-app.get("/users/authorize", authorizeUser);
-
-app.listen(3001, () => {
-  console.log("User microservice is running on port 3001");
-});
+// Nodemailer configuration
+// const mailTransporter = nodemailer.createTransport({
+//   service: "your_email_service_provider",
+//   auth: {
+//     user: "your_email",
+//     pass: "your_email_password",
+//   },
+// });
 
 app.listen(PORT, () => {
-  console.log(`Service is running on port ${PORT}`);
+  logger.info(`Service is running on port ${PORT}`);
 });
