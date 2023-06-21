@@ -13,6 +13,7 @@ class UserService {
     if (existingUser) {
       return res.status(400).json({ message: "Email is already registered" });
     }
+    console.log("Hi");
 
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
