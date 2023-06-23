@@ -1,0 +1,16 @@
+export const messages = {
+  emailNotFound: "Email not found",
+  userNotFound: "User not found",
+  emailRegistered: "Email is already registered",
+  userBanned: "User is banned",
+  incorrectPassword: "Incorrect password",
+  badRequest: "Bad request",
+  userNotActivated: "User not activated, please confirm verify code",
+  verificationCodeIncorrect: "Verification code incorrect",
+  badFieldsName: "Bad fields name",
+  roleExists: "Role already exists",
+  roleNotFound: "Role not found",
+  accessDenied: "Access is denied",
+  noTokenProvided: "No token provided",
+  invalidToken: "Invalid token",
+};

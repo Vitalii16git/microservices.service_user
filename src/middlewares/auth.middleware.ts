@@ -1,8 +1,13 @@
 import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
+import jwt, { JwtPayload } from "jsonwebtoken";
+import { messages } from "../utils/error.messages";
+
+interface ExtendedRequest extends Request {
+  userId?: string;
+}
 
 export const authMiddleware = (
-  req: Request,
+  req: ExtendedRequest,
   res: Response,
   next: NextFunction
 ) => {
@@ -11,20 +16,28 @@ export const authMiddleware = (
 
   // Check if the token exists
   if (!token) {
-    return res.status(401).json({ message: "No token provided" });
+    return res.status(401).json({ message: messages.noTokenProvided });
   }
 
   // Verify the token
-  const decodedToken = jwt.verify(token, process.env.SECRET as string);
+  const decodedToken: string | JwtPayload = jwt.verify(
+    token,
+    process.env.SECRET as string
+  );
+  if (!decodedToken) {
+    return res.status(401).json({ message: messages.invalidToken });
+  }
 
   // Handle token verification errors
-  if (!decodedToken) {
-    return res.status(401).json({ message: "Invalid token" });
+  if (!decodedToken || typeof decodedToken === "string") {
+    return res.status(401).json({ message: messages.invalidToken });
   }
 
   // Attach the user ID to the request object
-  req.userId = decodedToken.userId;
+  req.userId = decodedToken.userId as string;
 
   // Proceed to the next middleware or route handler
   next();
+
+  return;
 };

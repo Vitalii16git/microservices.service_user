@@ -1,3 +1,4 @@
+import { messages } from "./error.messages";
 import nodemailer from "nodemailer";
 import logger from "./logger";
 import { db } from "../config/database";
@@ -43,7 +44,7 @@ class Functions {
     const user = await db("users").where({ email }).first();
 
     if (!user) {
-      return res.status(404).json({ message: "Email not found" });
+      return res.status(404).json({ message: messages.userNotFound });
     }
 
     return user;
@@ -53,10 +54,36 @@ class Functions {
     const user = await db("users").where({ id }).first();
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: messages.userNotFound });
     }
 
     return user;
+  }
+
+  static async getRoles() {
+    const role = await db("roles").select("*");
+
+    return role;
+  }
+
+  static async getRoleByName(name: string, res: Response) {
+    const role = await await db("roles").where({ name }).first();
+
+    if (role) {
+      return res.status(400).json({ message: messages.roleExists });
+    }
+
+    return role;
+  }
+
+  static async getRoleById(id: string, res: Response) {
+    const role = await db("roles").where({ id }).first();
+
+    if (!role) {
+      return res.status(404).json({ message: messages.roleNotFound });
+    }
+
+    return role;
   }
 }
 
