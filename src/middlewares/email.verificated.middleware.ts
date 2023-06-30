@@ -10,7 +10,11 @@ export const emailVerificatedMiddleware = async (
   const { email } = req.body;
 
   // Check if the email is registered
-  const user = await Functions.getUserByEmail(email, res);
+  const user = await Functions.getUserByEmail(email);
+
+  if (!user) {
+    return res.status(404).json({ message: messages.userNotFound });
+  }
 
   // Compare the provided verification code with the stored one
   if (!user.isEmailVerified) {

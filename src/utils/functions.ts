@@ -40,12 +40,8 @@ class Functions {
     return responseUser;
   }
 
-  static async getUserByEmail(email: string, res: Response) {
+  static async getUserByEmail(email: string) {
     const user = await db("users").where({ email }).first();
-
-    if (!user) {
-      return res.status(404).json({ message: messages.userNotFound });
-    }
 
     return user;
   }
@@ -66,22 +62,14 @@ class Functions {
     return role;
   }
 
-  static async getRoleByName(name: string, res: Response) {
+  static async getRoleByName(name: string) {
     const role = await await db("roles").where({ name }).first();
-
-    if (role) {
-      return res.status(400).json({ message: messages.roleExists });
-    }
 
     return role;
   }
 
-  static async getRoleById(id: string, res: Response) {
+  static async getRoleById(id: string) {
     const role = await db("roles").where({ id }).first();
-
-    if (!role) {
-      return res.status(404).json({ message: messages.roleNotFound });
-    }
 
     return role;
   }

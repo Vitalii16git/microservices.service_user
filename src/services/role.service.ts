@@ -8,7 +8,11 @@ class RoleService {
     let { name, permissions } = req.body;
 
     // Check if the role already exists
-    await Functions.getRoleByName(name, res);
+    const role = await Functions.getRoleByName(name);
+
+    if (role) {
+      return res.status(400).json({ message: messages.roleExists });
+    }
 
     // Insert the new role into the database
     const id = await db("roles").insert({
@@ -29,7 +33,11 @@ class RoleService {
     const { id } = req.params;
 
     // Retrieve the role from the database
-    const role = await Functions.getRoleById(id, res);
+    const role = await Functions.getRoleById(id);
+
+    if (!role) {
+      return res.status(404).json({ message: messages.roleNotFound });
+    }
 
     res.status(200).json(role);
     return;

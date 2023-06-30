@@ -54,7 +54,11 @@ class UserService {
     const { email, password } = req.body;
 
     // Check if the email is registered
-    const user = await Functions.getUserByEmail(email, res);
+    const user = await Functions.getUserByEmail(email);
+
+    if (!user) {
+      return res.status(404).json({ message: messages.userNotFound });
+    }
 
     // Check if the user is banned
     if (user.isBanned) {
