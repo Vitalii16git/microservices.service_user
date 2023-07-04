@@ -1,4 +1,5 @@
 export const messages = {
+  notFound: "Not Found",
   emailNotFound: "Email not found",
   userNotFound: "User not found",
   emailRegistered: "Email is already registered",
@@ -13,4 +14,5 @@ export const messages = {
   accessDenied: "Access is denied",
   noTokenProvided: "No token provided",
   invalidToken: "Invalid token",
+  tokenExpired: "Token expired",
 };

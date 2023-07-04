@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import Functions from "../utils/functions";
 import jwt from "jsonwebtoken";
 import { messages } from "../utils/error.messages";
+import { redisClient } from "../config/redis";
 
 class UserService {
   async register(req: Request, res: Response, _next: NextFunction) {
@@ -53,28 +54,34 @@ class UserService {
   async login(req: Request, res: Response, _next: NextFunction) {
     const { email, password } = req.body;
 
-    // Check if the email is registered
-    const user = await Functions.getUserByEmail(email);
+    // Check if the user data exists in the cache
+    let user: any = await redisClient.get(email);
 
     if (!user) {
-      return res.status(404).json({ message: messages.userNotFound });
-    }
+      // User data is not available in the cache, fetch it from the database
+      user = await Functions.getUserByEmail(email);
 
-    // Check if the user is banned
-    if (user.isBanned) {
-      return res.status(403).json({ message: messages.userBanned });
-    }
+      // Check if the user is banned
+      if (user.isBanned) {
+        return res.status(403).json({ message: messages.userBanned });
+      }
 
-    // Check if the password is correct
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: messages.incorrectPassword });
+      // Check if the password is correct
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ message: messages.incorrectPassword });
+      }
+
+      // Save the user data in the cache for future use
+      await redisClient.set(email, JSON.stringify(user));
+    } else {
+      user = JSON.parse(user);
     }
 
     // Generate a JWT token
     const token = jwt.sign(
       { userId: user.id, userRole: user.role },
-      process.env.SECRET as string,
+      process.env.SECRET!,
       {
         expiresIn: "1h", // Set the token expiration time
       }
@@ -83,7 +90,7 @@ class UserService {
     // Generate a refresh token
     const refreshToken = jwt.sign(
       { userId: user.id, userRole: user.role },
-      process.env.REFRESH_TOKEN_SECRET as string,
+      process.env.REFRESH_TOKEN_SECRET!,
       {
         expiresIn: "7d", // Set the refresh token expiration time
       }
@@ -98,7 +105,20 @@ class UserService {
   }
 
   async getUsers(_req: Request, res: Response, _next: NextFunction) {
-    const users = await Functions.getUsers();
+    // Check if the users data exists in the cache
+    let users: any = await redisClient.get("users");
+
+    if (!users) {
+      // Users data is not available in the cache, fetch it from the database
+      users = await Functions.getUsers();
+
+      // Save the users data in the cache for future use
+      await redisClient.set("users", JSON.stringify(users));
+    }
+
+    if (users) {
+      users = JSON.parse(users);
+    }
 
     res.json(users);
     return;
@@ -107,7 +127,24 @@ class UserService {
   async getUser(req: Request, res: Response, _next: NextFunction) {
     const { id } = req.params;
 
-    const user = await Functions.getUserById(id, res);
+    // Check if the user data exists in the cache
+    let user: any = await redisClient.get(`user:${id}`);
+
+    if (!user) {
+      // User data is not available in the cache, fetch it from the database
+      user = await Functions.getUserById(id, res);
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Save the user data in the cache for future use
+      await redisClient.set(`user:${id}`, JSON.stringify(user));
+    }
+
+    if (user) {
+      user = JSON.parse(user);
+    }
 
     const { password, ...responseUser } = user;
 
