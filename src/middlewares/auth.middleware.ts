@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import { messages } from "../utils/error.messages";
 
 interface ExtendedRequest extends Request {
@@ -12,6 +12,7 @@ export const authMiddleware = (
   next: NextFunction
 ) => {
   // Retrieve the token from the request headers or other sources
+
   const token = req.headers.authorization?.split(" ")[1];
 
   // Check if the token exists
@@ -19,11 +20,17 @@ export const authMiddleware = (
     return res.status(401).json({ message: messages.noTokenProvided });
   }
 
-  // Verify the token
-  const decodedToken: string | JwtPayload = jwt.verify(
-    token,
-    process.env.SECRET as string
-  );
+  let decodedToken;
+
+  try {
+    decodedToken = jwt.verify(token, process.env.SECRET as string);
+  } catch (error: any) {
+    // handler when token expired
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({ message: messages.tokenExpired });
+    }
+  }
+
   if (!decodedToken) {
     return res.status(401).json({ message: messages.invalidToken });
   }
