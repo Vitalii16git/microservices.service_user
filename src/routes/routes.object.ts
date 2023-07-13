@@ -51,7 +51,7 @@ export const routes = {
       routeName: "updateUser",
       url: "/update/:id",
       validator: [],
-      middleware: [authMiddleware],
+      middleware: [authMiddleware, roleMiddleware("updateUser")],
       controller: userController.updateUser,
     },
     {
@@ -59,8 +59,17 @@ export const routes = {
       routeName: "deleteUser",
       url: "/delete/:id",
       validator: [],
-      middleware: [authMiddleware],
+      middleware: [authMiddleware, roleMiddleware("updateUser")],
       controller: userController.deleteUser,
+    },
+
+    {
+      method: "post",
+      routeName: "checkRedis", // function for testing redis
+      url: "/checkRedis",
+      validator: [],
+      middleware: [],
+      controller: userController.checkRedis,
     },
   ],
   roleRoutes: [
@@ -69,7 +78,7 @@ export const routes = {
       routeName: "createRole",
       url: "/create",
       validator: [],
-      middleware: [],
+      middleware: [authMiddleware, roleMiddleware("createRole")],
       controller: roleController.createRole,
     },
     {
@@ -77,7 +86,7 @@ export const routes = {
       routeName: "getRoles",
       url: "/list",
       validator: [],
-      middleware: [],
+      middleware: [authMiddleware, roleMiddleware("getRoles")],
       controller: roleController.getRoles,
     },
     {
@@ -85,7 +94,7 @@ export const routes = {
       routeName: "getRole",
       url: "/:id",
       validator: [],
-      middleware: [],
+      middleware: [authMiddleware, roleMiddleware("getRole")],
       controller: roleController.getRole,
     },
     {
@@ -93,7 +102,7 @@ export const routes = {
       routeName: "updateRole",
       url: "/update/:id",
       validator: [],
-      middleware: [],
+      middleware: [authMiddleware, roleMiddleware("updateRole")],
       controller: roleController.updateRole,
     },
     {
@@ -101,7 +110,7 @@ export const routes = {
       routeName: "deleteRole",
       url: "/delete/:id",
       validator: [],
-      middleware: [],
+      middleware: [authMiddleware, roleMiddleware("deleteRole")],
       controller: roleController.deleteRole,
     },
   ],

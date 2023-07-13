@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { db } from "../config/database";
 import { messages } from "../utils/error.messages";
 import Functions from "../utils/functions";
+import { redisClient } from "../config/redis";
 
 class RoleService {
   async createRole(req: Request, res: Response, _next: NextFunction) {
@@ -19,12 +20,31 @@ class RoleService {
       name,
     });
 
+    // Store the role in Redis for caching or other purposes
+    await redisClient.set(
+      `role:${id}`,
+      JSON.stringify({ id, name, permissions })
+    );
+    await redisClient.expire(`role:${id}`, 24 * 3600); // 1 day
+
     res.status(201).json({ id, name, permissions });
     return;
   }
 
   async getRoles(_req: Request, res: Response, _next: NextFunction) {
+    const cachedRoles = await redisClient.get("roles");
+
+    if (cachedRoles) {
+      const roles = JSON.parse(cachedRoles);
+      return res.status(200).json(roles);
+    }
+
+    // Retrieve the roles from the database
     const roles = await Functions.getRoles();
+
+    // Store the roles in Redis for caching
+    await redisClient.set("roles", JSON.stringify(roles));
+    await redisClient.expire(`roles`, 24 * 3600); // 1 day
 
     return res.status(200).json(roles);
   }
@@ -32,12 +52,24 @@ class RoleService {
   async getRole(req: Request, res: Response, _next: NextFunction) {
     const { id } = req.params;
 
+    // Check if the role is stored in Redis
+    const cachedRole = await redisClient.get(`role:${id}`);
+
+    if (cachedRole) {
+      const role = JSON.parse(cachedRole);
+      return res.status(200).json(role);
+    }
+
     // Retrieve the role from the database
     const role = await Functions.getRoleById(id);
 
     if (!role) {
-      return res.status(404).json({ message: messages.roleNotFound });
+      return res.status(404).json({ message: "Role not found" });
     }
+
+    // Store the role in Redis for caching
+    await redisClient.set(`role:${id}`, JSON.stringify(role));
+    await redisClient.expire(`role:${id}`, 24 * 3600); // 1 day
 
     res.status(200).json(role);
     return;
@@ -63,15 +95,25 @@ class RoleService {
       .where({ id })
       .update({ permissions: JSON.stringify(updatedPermissions) });
 
+    // set cache
+    await redisClient.set(
+      `role:${id}`,
+      JSON.stringify({ id, name, permissions: updatedPermissions })
+    );
+    await redisClient.expire(`role:${id}`, 24 * 3600); // 1 day
+
     res.status(200).json({ id, name, permissions: updatedPermissions });
     return;
   }
 
   async deleteRole(req: Request, res: Response, _next: NextFunction) {
-    const { roleId } = req.params;
+    const { id } = req.params;
 
     // Delete the role from the database
-    const deletedRole = await db("roles").where({ id: roleId }).del();
+    const deletedRole = await db("roles").where({ id }).del();
+
+    // delete cache
+    await redisClient.srem(`role:${id}`, deletedRole);
 
     res.status(204).json(deletedRole);
     return;

@@ -10,14 +10,14 @@ class Functions {
     const transporter = nodemailer.createTransport({
       service: "Gmail",
       auth: {
-        user: process.env.MY_GMAIL_EMAIL,
-        pass: process.env.GENERATED_PASS,
+        user: process.env.GMAIL_EMAIL,
+        pass: process.env.GMAIL_GENERATED_PASS,
       },
     });
 
     // Configure the email options
     const mailOptions = {
-      from: process.env.MY_GMAIL_EMAIL,
+      from: process.env.GMAIL_EMAIL,
       to: email,
       subject: "Account Verification",
       text: `Your verification code is: ${verificationCode}`,

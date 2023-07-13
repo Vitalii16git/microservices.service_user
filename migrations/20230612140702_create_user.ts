@@ -45,10 +45,18 @@ export async function up(knex: Knex): Promise<void> {
     names: JSON.stringify(routeNames),
   });
 
-  // set Super User
+  // set Super Admin role
   await knex("roles").insert({
-    name: "Super User",
+    name: "Super Admin",
     permissions: JSON.stringify(routeNames),
+  });
+
+  // set Super Admin
+  await knex("users").insert({
+    email: "admin",
+    password: "admin",
+    role: "Super Admin",
+    isEmailVerified: true,
   });
 }
 
