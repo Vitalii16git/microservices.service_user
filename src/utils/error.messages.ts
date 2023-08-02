@@ -15,4 +15,5 @@ export const messages = {
   noTokenProvided: "No token provided",
   invalidToken: "Invalid token",
   tokenExpired: "Token expired",
+  errorVerificationCode: "Error verification code",
 };

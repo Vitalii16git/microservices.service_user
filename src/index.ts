@@ -13,6 +13,7 @@ const PORT = process.env.PORT || 5050;
 app.use(express.json());
 app.use(cors());
 app.use("/user", userRouter);
+
 app.use("/role", roleRouter);
 
 app.use("*", (_req, res) => {

@@ -1,27 +1,36 @@
 import { Request, Response, NextFunction } from "express";
-import userService from "../services/user.service";
+import {
+  register,
+  login,
+  getUsers,
+  getUser,
+  emailVerification,
+  updateUser,
+  deleteUser,
+} from "../services/user.service";
+// import { IUser } from "../utils/interfaces";
 
 class UserController {
   async register(req: Request, res: Response, next: NextFunction) {
-    return userService.register(req, res, next);
+    return register(req, res, next);
   }
   async login(req: Request, res: Response, next: NextFunction) {
-    return userService.login(req, res, next);
+    return login(req, res, next);
   }
   async getUsers(req: Request, res: Response, next: NextFunction) {
-    return userService.getUsers(req, res, next);
+    return getUsers(req, res, next);
   }
   async getUser(req: Request, res: Response, next: NextFunction) {
-    return userService.getUsers(req, res, next);
+    return getUser(req, res, next);
   }
   async emailVerification(req: Request, res: Response, next: NextFunction) {
-    return userService.emailVerification(req, res, next);
+    return emailVerification(req, res, next);
   }
   async updateUser(req: Request, res: Response, next: NextFunction) {
-    return userService.updateUser(req, res, next);
+    return updateUser(req, res, next);
   }
   async deleteUser(req: Request, res: Response, next: NextFunction) {
-    return userService.deleteUser(req, res, next);
+    return deleteUser(req, res, next);
   }
 }
 
