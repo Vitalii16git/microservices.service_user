@@ -1,9 +1,8 @@
 import { Router } from "express";
-import { routes } from "./routes.object";
+import { userRoutes } from "./user.routes";
 
 const router = Router();
-
-routes.userRoutes.forEach((route) => {
+userRoutes.forEach((route) => {
   const { method, url, validator, middleware, controller } = route;
 
   (router.route(url) as any)[method](validator, middleware, controller);

@@ -1,10 +1,12 @@
-import { Request, Response, NextFunction } from "express";
+import { Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { messages } from "../utils/error.messages";
+import { ExtendedRequest } from "../utils/interfaces";
 
-interface ExtendedRequest extends Request {
-  userId?: string;
-}
+// interface ExtendedRequest extends Request {
+//   userId?: string;
+//   userRolePermissions: string[];
+// }
 
 export const authMiddleware = (
   req: ExtendedRequest,
@@ -31,17 +33,14 @@ export const authMiddleware = (
     }
   }
 
-  if (!decodedToken) {
-    return res.status(401).json({ message: messages.invalidToken });
-  }
-
   // Handle token verification errors
   if (!decodedToken || typeof decodedToken === "string") {
     return res.status(401).json({ message: messages.invalidToken });
   }
 
   // Attach the user ID to the request object
-  req.userId = decodedToken.userId as string;
+  req.userId = decodedToken.userId;
+  req.userRolePermissions = decodedToken.userRolePermissions;
 
   // Proceed to the next middleware or route handler
   next();

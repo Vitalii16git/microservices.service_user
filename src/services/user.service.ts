@@ -1,244 +1,253 @@
 import { Request, Response, NextFunction } from "express";
 import { db } from "../config/database";
 import bcrypt from "bcrypt";
-import Functions from "../utils/functions";
+import { sendVerificationEmail } from "../utils/functions";
+import { getUserByEmail, getUserById, getUserList } from "../models/user.model";
 import jwt from "jsonwebtoken";
 import { messages } from "../utils/error.messages";
-import { redisClient } from "../config/redis";
+import { IUser } from "../utils/interfaces";
+import { userRolePermissions } from "../models/role.model";
 
-class UserService {
-  async register(req: Request, res: Response, _next: NextFunction) {
-    const { email, password } = req.body;
+export const register = async (
+  req: Request,
+  res: Response,
+  _next: NextFunction
+): Promise<void> => {
+  const { email, password } = req.body;
 
-    // Check if the email is already registered
-    const existingUser = await db("users").where({ email }).first();
-    if (existingUser) {
-      return res.status(400).json({ message: messages.emailRegistered });
+  // Check if the email is already registered
+  const existingUser = await db("users").where({ email }).first();
+  if (existingUser) {
+    res.status(400).json({ message: messages.emailRegistered });
+    return;
+  }
+
+  // Hash the password
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  // Generate a verification code
+  const verificationCode = Math.floor(
+    100000 + Math.random() * 900000
+  ).toString();
+
+  // Insert the new user into the database
+  const newUser: IUser = {
+    email,
+    password: hashedPassword,
+    verificationCode,
+  };
+
+  // Send verification email with the verification code
+  const emailConfirm: boolean = await sendVerificationEmail(
+    email,
+    verificationCode
+  );
+
+  if (!emailConfirm) {
+    res.status(400).json({ message: messages.errorVerificationCode });
+    return;
+  }
+
+  await db("users").insert(newUser);
+
+  const {
+    password: excludedPass,
+    verificationCode: excludedCode,
+    ...responseUser
+  } = newUser;
+
+  res.status(201).json(responseUser);
+  return;
+};
+
+export const login = async (
+  req: Request,
+  res: Response,
+  _next: NextFunction
+): Promise<void> => {
+  const { email, password } = req.body;
+
+  // get user by email
+  const user = await getUserByEmail(email);
+
+  // Check if the user is banned
+  if (user.isBanned) {
+    res.status(403).json({ message: messages.userBanned });
+    return;
+  }
+
+  // Check if the password is correct
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+  if (!isPasswordValid) {
+    res.status(401).json({ message: messages.incorrectPassword });
+    return;
+  }
+
+  // handler for permissions function
+  userRolePermissions(user.roleId).catch((err) => {
+    return res.status(401).json({ message: err.message });
+  });
+
+  // Generate a JWT token
+  const token = jwt.sign(
+    {
+      userId: user.id,
+      userRolePermissions: await userRolePermissions(user.roleId),
+    },
+    process.env.SECRET!,
+    {
+      expiresIn: "1h", // Set the token expiration time
     }
+  );
 
-    // Hash the password
+  // Generate a refresh token
+  const refreshToken = jwt.sign(
+    { userId: user.id, userRolePermissions: userRolePermissions(user.roleId) },
+    process.env.REFRESH_TOKEN_SECRET!,
+    {
+      expiresIn: "7d", // Set the refresh token expiration time
+    }
+  );
+
+  // Update the refresh token in the user's record
+  await db("users").where({ id: user.id }).update({ refreshToken });
+
+  // Include the access token and refresh token in the response
+  res.status(200).json({ token, refreshToken });
+  return;
+};
+
+export const getUsers = async (
+  _req: Request,
+  res: Response,
+  _next: NextFunction
+): Promise<void> => {
+  const users = await getUserList();
+
+  res.json(users);
+  return;
+};
+
+export const getUser = async (
+  req: Request,
+  res: Response,
+  _next: NextFunction
+): Promise<void> => {
+  const { id } = req.params;
+
+  const user = await getUserById(id, res);
+
+  if (!user) {
+    res.status(404).json({ message: "User not found" });
+    return;
+  }
+
+  const { password, ...responseUser } = user;
+
+  res.status(200).json(responseUser);
+  return;
+};
+
+export const emailVerification = async (
+  req: Request,
+  res: Response,
+  _next: NextFunction
+): Promise<void> => {
+  const { id } = req.params;
+  const { verificationCode } = req.body;
+
+  const user = await getUserById(id, res);
+
+  if (!verificationCode) {
+    res.status(400).json({ message: messages.badRequest });
+    return;
+  }
+
+  const verification = verificationCode === user.verificationCode;
+  if (verification) {
+    user.isEmailVerified = true;
+  }
+
+  if (!verification) {
+    res.json({ message: messages.verificationCodeIncorrect });
+    return;
+  }
+
+  // Update the user in the database
+  await db("users").where({ id }).update(user);
+
+  // Retrieve the updated user from the database
+  const updatedUser = await db("users").where({ id }).first();
+
+  const { password: excludedPassword, ...responseUser } = updatedUser;
+
+  res.status(200).json(responseUser);
+  return;
+};
+
+export const updateUser = async (
+  req: Request,
+  res: Response,
+  _next: NextFunction
+): Promise<void> => {
+  const { id } = req.params;
+  const { email, password, name, address, tags } = req.body;
+
+  // user presence check
+  await getUserById(id, res);
+
+  // Create an object to hold the updated user fields
+  const updatedUser: any = {};
+
+  if (email) {
+    updatedUser.email = email;
+  }
+
+  if (password) {
+    // Hash the new password
     const hashedPassword = await bcrypt.hash(password, 10);
+    updatedUser.password = hashedPassword;
+  }
 
-    // Generate a verification code
-    const verificationCode = Math.floor(
-      100000 + Math.random() * 900000
-    ).toString();
+  if (name) {
+    updatedUser.name = name;
+  }
 
-    // Insert the new user into the database
-    let newUser = {
-      email,
-      password: hashedPassword,
-      verificationCode,
-    };
+  if (address) {
+    updatedUser.address = address;
+  }
 
-    // Send verification email with the verification code
-    const emailConfirm: any = await Functions.sendVerificationEmail(
-      email,
-      verificationCode
-    );
+  if (tags) {
+    updatedUser.tags = tags;
+  }
 
-    if (emailConfirm) {
-      await db("users").insert(newUser);
-
-      const {
-        password: excludedPass,
-        verificationCode: excludedCode,
-        ...responseUser
-      } = newUser;
-      return res.status(201).json(responseUser);
-    }
-
+  if (Object.keys(updatedUser).length === 0) {
+    res.status(400).json({ message: messages.badFieldsName });
     return;
   }
 
-  async login(req: Request, res: Response, _next: NextFunction) {
-    const { email, password } = req.body;
+  // Update the user in the database
+  await db("users").where({ id }).update(updatedUser);
 
-    // Check if the user data exists in the cache
-    let user: any = await redisClient.get(email);
+  // Retrieve the updated user from the database
+  const updatedUserData = getUserById(id, res);
 
-    if (!user) {
-      // User data is not available in the cache, fetch it from the database
-      user = await Functions.getUserByEmail(email);
+  res.status(200).json(updatedUserData);
+  return;
+};
 
-      // Check if the user is banned
-      if (user.isBanned) {
-        return res.status(403).json({ message: messages.userBanned });
-      }
+export const deleteUser = async (
+  req: Request,
+  res: Response,
+  _next: NextFunction
+): Promise<void> => {
+  const { id } = req.params;
 
-      // Check if the password is correct
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      if (!isPasswordValid) {
-        return res.status(401).json({ message: messages.incorrectPassword });
-      }
+  const deletedUser = await getUserById(id, res);
 
-      // Save the user data in the cache for future use
-      await redisClient.set(email, JSON.stringify(user));
-    } else {
-      user = JSON.parse(user);
-    }
+  // Delete the user from the database
+  await db("users").where({ id }).del();
 
-    // Generate a JWT token
-    const token = jwt.sign(
-      { userId: user.id, userRole: user.role },
-      process.env.SECRET!,
-      {
-        expiresIn: "1h", // Set the token expiration time
-      }
-    );
-
-    // Generate a refresh token
-    const refreshToken = jwt.sign(
-      { userId: user.id, userRole: user.role },
-      process.env.REFRESH_TOKEN_SECRET!,
-      {
-        expiresIn: "7d", // Set the refresh token expiration time
-      }
-    );
-
-    // Update the refresh token in the user's record
-    await db("users").where({ id: user.id }).update({ refreshToken });
-
-    // Include the access token and refresh token in the response
-    res.status(200).json({ token, refreshToken });
-    return;
-  }
-
-  async getUsers(_req: Request, res: Response, _next: NextFunction) {
-    // Check if the users data exists in the cache
-    let users: any = await redisClient.get("users");
-
-    if (!users) {
-      // Users data is not available in the cache, fetch it from the database
-      users = await Functions.getUsers();
-
-      // Save the users data in the cache for future use
-      await redisClient.set("users", JSON.stringify(users));
-    }
-
-    if (users) {
-      users = JSON.parse(users);
-    }
-
-    res.json(users);
-    return;
-  }
-
-  async getUser(req: Request, res: Response, _next: NextFunction) {
-    const { id } = req.params;
-
-    // Check if the user data exists in the cache
-    let user: any = await redisClient.get(`user:${id}`);
-
-    if (!user) {
-      // User data is not available in the cache, fetch it from the database
-      user = await Functions.getUserById(id, res);
-
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Save the user data in the cache for future use
-      await redisClient.set(`user:${id}`, JSON.stringify(user));
-    }
-
-    if (user) {
-      user = JSON.parse(user);
-    }
-
-    const { password, ...responseUser } = user;
-
-    res.status(200).json(responseUser);
-    return;
-  }
-
-  async emailVerification(req: Request, res: Response, _next: NextFunction) {
-    const { id } = req.params;
-    const { verificationCode } = req.body;
-
-    const user = await Functions.getUserById(id, res);
-
-    if (!verificationCode) {
-      return res.status(400).json({ message: messages.badRequest });
-    }
-
-    const verification = verificationCode === user.verificationCode;
-    if (verification) {
-      user.isEmailVerified = true;
-    }
-
-    if (!verification) {
-      return res.json({ message: messages.verificationCodeIncorrect });
-    }
-
-    // Update the user in the database
-    await db("users").where({ id }).update(user);
-
-    // Retrieve the updated user from the database
-    const updatedUser = await db("users").where({ id }).first();
-
-    const { password: excludedPassword, ...responseUser } = updatedUser;
-
-    res.status(200).json(responseUser);
-    return;
-  }
-
-  async updateUser(req: Request, res: Response, _next: NextFunction) {
-    const { id } = req.params;
-    const { email, password, name, address, tags } = req.body;
-
-    // user presence check
-    await Functions.getUserById(id, res);
-
-    // Create an object to hold the updated user fields
-    const updatedUser: any = {};
-
-    if (email) {
-      updatedUser.email = email;
-    }
-
-    if (password) {
-      // Hash the new password
-      const hashedPassword = await bcrypt.hash(password, 10);
-      updatedUser.password = hashedPassword;
-    }
-
-    if (name) {
-      updatedUser.name = name;
-    }
-
-    if (address) {
-      updatedUser.address = address;
-    }
-
-    if (tags) {
-      updatedUser.tags = tags;
-    }
-
-    if (Object.keys(updatedUser).length === 0) {
-      return res.status(400).json({ message: messages.badFieldsName });
-    }
-
-    // Update the user in the database
-    await db("users").where({ id }).update(updatedUser);
-
-    // Retrieve the updated user from the database
-    const updatedUserData = Functions.getUserById(id, res);
-
-    res.status(200).json(updatedUserData);
-    return;
-  }
-
-  async deleteUser(req: Request, res: Response, _next: NextFunction) {
-    const { id } = req.params;
-
-    const deletedUser = await Functions.getUserById(id, res);
-
-    // Delete the user from the database
-    await db("users").where({ id }).del();
-
-    res.status(200).json(deletedUser);
-  }
-}
-
-export default new UserService();
+  res.status(200).json(deletedUser);
+  return;
+};
