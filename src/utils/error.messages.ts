@@ -16,4 +16,5 @@ export const messages = {
   invalidToken: "Invalid token",
   tokenExpired: "Token expired",
   errorVerificationCode: "Error verification code",
+  invalidInput: "Invalid input",
 };

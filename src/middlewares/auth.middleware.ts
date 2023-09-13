@@ -3,11 +3,6 @@ import jwt from "jsonwebtoken";
 import { messages } from "../utils/error.messages";
 import { ExtendedRequest } from "../utils/interfaces";
 
-// interface ExtendedRequest extends Request {
-//   userId?: string;
-//   userRolePermissions: string[];
-// }
-
 export const authMiddleware = (
   req: ExtendedRequest,
   res: Response,
@@ -42,8 +37,5 @@ export const authMiddleware = (
   req.userId = decodedToken.userId;
   req.userRolePermissions = decodedToken.userRolePermissions;
 
-  // Proceed to the next middleware or route handler
-  next();
-
-  return;
+  return next();
 };

@@ -21,8 +21,5 @@ export const emailVerificatedMiddleware = async (
     return res.status(400).json({ message: messages.userNotActivated });
   }
 
-  // Proceed to the next middleware
-  next();
-
-  return;
+  return next();
 };
