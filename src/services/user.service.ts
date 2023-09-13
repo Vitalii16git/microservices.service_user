@@ -57,7 +57,6 @@ export const register = async (
   } = newUser;
 
   res.status(201).json(responseUser);
-  return;
 };
 
 export const login = async (

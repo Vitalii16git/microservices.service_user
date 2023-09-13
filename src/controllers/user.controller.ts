@@ -8,7 +8,6 @@ import {
   updateUser,
   deleteUser,
 } from "../services/user.service";
-// import { IUser } from "../utils/interfaces";
 
 class UserController {
   async register(req: Request, res: Response, next: NextFunction) {

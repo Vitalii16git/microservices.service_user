@@ -2,6 +2,7 @@ import { Router } from "express";
 import { userRoutes } from "./user.routes";
 
 const router = Router();
+
 userRoutes.forEach((route) => {
   const { method, url, validator, middleware, controller } = route;
 
