@@ -1,6 +1,4 @@
 import { db } from "../config/database";
-import { Response } from "express";
-import { messages } from "../utils/error.messages";
 
 export const getUserList = async () => {
   const users = await db("users").select("*");
@@ -19,12 +17,8 @@ export const getUserByEmail = async (email: string) => {
   return user;
 };
 
-export const getUserById = async (id: string, res: Response) => {
+export const getUserById = async (id: string) => {
   const user = await db("users").where({ id }).first();
-
-  if (!user) {
-    return res.status(404).json({ message: messages.userNotFound });
-  }
 
   return user;
 };

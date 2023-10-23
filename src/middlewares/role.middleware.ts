@@ -4,7 +4,7 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
 export const roleMiddleware =
-  (permission: string) =>
+  (permissions: string[]) =>
   async (req: Request, res: Response, next: NextFunction) => {
     // Get the JWT token from the request headers or query parameters
     const token = req.headers.authorization?.split(" ")[1];
@@ -19,8 +19,17 @@ export const roleMiddleware =
     // Extract the user role id from the decoded token
     const { userRolePermissions } = decodedToken;
 
+    const permissionsObject = permissions.reduce((acc: any, perm) => {
+      acc[perm] = perm;
+      return acc;
+    }, {});
+
+    const samePermsLength = userRolePermissions.filter(
+      (perm: any) => permissionsObject[perm]
+    ).length;
+
     // Check if role has permissions for the endpoint
-    if (!userRolePermissions[permission]) {
+    if (samePermsLength !== permissions.length) {
       return res.status(401).json({ error: messages.accessDenied });
     }
 

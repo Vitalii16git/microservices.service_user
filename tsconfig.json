@@ -23,6 +23,11 @@
     "esModuleInterop": true /* Enables emit interoperability between CommonJS and ES Modules via creation of namespace objects for all imports. Implies 'allowSyntheticDefaultImports'. */,
     "experimentalDecorators": true
   },
-  "include": ["src//*"],
+  "include": [
+    "src//*",
+    "test//*",
+    "jest.config.js",
+    "src/__test__/user.test.ts"
+  ],
   "exclude": ["/*.test.ts"]
 }
