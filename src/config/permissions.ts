@@ -26,3 +26,7 @@ export const SYSTEM_ROLES = {
   MODERATOR: "MODERATOR",
   USER: "USER",
 };
+
+export const USER_PERMISSIONS = ALL_PERMISSIONS.filter((perm) =>
+  perm.endsWith("reed")
+);

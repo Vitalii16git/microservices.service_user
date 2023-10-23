@@ -1,5 +1,9 @@
 import { Knex } from "knex";
-import { SYSTEM_ROLES, ALL_PERMISSIONS } from "../src/config/permissions";
+import {
+  SYSTEM_ROLES,
+  ALL_PERMISSIONS,
+  USER_PERMISSIONS,
+} from "../src/config/permissions";
 import { hash } from "bcrypt";
 
 export async function up(knex: Knex): Promise<void> {
@@ -9,7 +13,7 @@ export async function up(knex: Knex): Promise<void> {
     table.string("email", 255).notNullable().unique();
     table.string("name", 255).unique();
     table.string("password", 255).notNullable();
-    table.integer("roleId").unsigned();
+    table.integer("roleId").unsigned().defaultTo(2);
     table.string("address", 255);
     table.boolean("isBanned").defaultTo(false);
     table.string("verificationCode", 255);
@@ -29,6 +33,12 @@ export async function up(knex: Knex): Promise<void> {
   await knex("roles").insert({
     name: SYSTEM_ROLES.SUPER_ADMIN,
     permissions: { data: ALL_PERMISSIONS },
+  });
+
+  // seed Super Admin role
+  await knex("roles").insert({
+    name: SYSTEM_ROLES.USER,
+    permissions: { data: USER_PERMISSIONS },
   });
 
   // seed Super Admin user

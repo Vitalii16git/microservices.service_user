@@ -36,7 +36,7 @@ export const userRoutes: IRoutes[] = [
     routeName: "getUser",
     url: "/:id",
     validator: [],
-    middleware: [authMiddleware, roleMiddleware("users:reed")],
+    middleware: [authMiddleware, roleMiddleware(["users:reed"])],
     controller: userController.getUser,
   },
   {

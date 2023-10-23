@@ -57,6 +57,7 @@ export const register = async (
   } = newUser;
 
   res.status(201).json(responseUser);
+  return;
 };
 
 export const login = async (
@@ -134,10 +135,10 @@ export const getUser = async (
 ): Promise<void> => {
   const { id } = req.params;
 
-  const user = await getUserById(id, res);
+  const user = await getUserById(id);
 
   if (!user) {
-    res.status(404).json({ message: "User not found" });
+    res.status(404).json({ message: messages.userNotFound });
     return;
   }
 
@@ -155,7 +156,12 @@ export const emailVerification = async (
   const { id } = req.params;
   const { verificationCode } = req.body;
 
-  const user = await getUserById(id, res);
+  const user = await getUserById(id);
+
+  if (!user) {
+    res.status(404).json({ message: messages.userNotFound });
+    return;
+  }
 
   if (!verificationCode) {
     res.status(400).json({ message: messages.badRequest });
@@ -168,7 +174,7 @@ export const emailVerification = async (
   }
 
   if (!verification) {
-    res.json({ message: messages.verificationCodeIncorrect });
+    res.status(400).json({ message: messages.verificationCodeIncorrect });
     return;
   }
 
@@ -193,7 +199,12 @@ export const updateUser = async (
   const { email, password, name, address, tags } = req.body;
 
   // user presence check
-  await getUserById(id, res);
+  const user = await getUserById(id);
+
+  if (!user) {
+    res.status(404).json({ message: messages.userNotFound });
+    return;
+  }
 
   // Create an object to hold the updated user fields
   const updatedUser: any = {};
@@ -229,7 +240,12 @@ export const updateUser = async (
   await db("users").where({ id }).update(updatedUser);
 
   // Retrieve the updated user from the database
-  const updatedUserData = getUserById(id, res);
+  const updatedUserData = getUserById(id);
+
+  if (!updatedUserData) {
+    res.status(404).json({ message: messages.userNotFound });
+    return;
+  }
 
   res.status(200).json(updatedUserData);
   return;
@@ -242,7 +258,12 @@ export const deleteUser = async (
 ): Promise<void> => {
   const { id } = req.params;
 
-  const deletedUser = await getUserById(id, res);
+  const deletedUser = await getUserById(id);
+
+  if (!deletedUser) {
+    res.status(404).json({ message: messages.userNotFound });
+    return;
+  }
 
   // Delete the user from the database
   await db("users").where({ id }).del();
